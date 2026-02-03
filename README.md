@@ -1,12 +1,12 @@
-# Aether Exchange MVP
+# Aether Exchange (Cloudflare Pages + D1)
 
-Production-ready MVP for a crypto → fiat exchange that looks automated while payouts are manually verified and processed.
+A premium crypto → fiat exchange experience that looks automated while payouts are manually verified and processed.
 
 ## Stack
-- Next.js 14 (App Router) + TypeScript
-- Tailwind CSS
-- Supabase Postgres + Auth
-- Serverless API routes via `/app/api/*`
+- React + Vite (Cloudflare Pages frontend)
+- Cloudflare Pages Functions (API)
+- Cloudflare D1 (SQLite)
+- Wrangler for local dev + deploy
 
 ## Local Setup
 
@@ -15,74 +15,72 @@ Production-ready MVP for a crypto → fiat exchange that looks automated while p
 npm install
 ```
 
-### 2) Configure environment variables
-Create a `.env.local` file with:
+### 2) Create the D1 database
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+wrangler d1 create crypto-fiat
 ```
 
-### 3) Create database schema
-Run the SQL in `db/schema.sql` inside the Supabase SQL editor.
+### 3) Apply schema
+```bash
+wrangler d1 execute crypto-fiat --file=./db/schema.sql
+```
 
-### 4) Seed settings + rates
+### 4) Seed settings, rates, and admin user
 ```bash
 npm run seed
 ```
 
-### 5) Create an admin user
-Use Supabase Auth → Users → “Add user” and create an email/password user.
+Seed defaults:
+- Admin email: `admin@example.com`
+- Admin password: `ChangeMe123!` (override with `ADMIN_PASSWORD` env)
 
-### 6) Run the app
+### 5) Run local dev
+Terminal A:
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000
+Terminal B (Pages Functions + D1 proxy):
+```bash
+npm run pages:dev
+```
 
-## Deposit Modes
-Default is `fixed`.
-- `fixed`: uses `fixed_addresses` from the settings table.
-- `pool`: pulls the oldest `unused` address from `addresses`.
-  - If the pool is empty and `fallback_to_fixed` is true, the fixed address is used instead.
+Open http://localhost:5173
 
-Manage these in **Admin → Settings**.
+## Deploy to Cloudflare Pages
+1. Push repo to GitHub.
+2. Create a Cloudflare Pages project.
+3. Set build command: `npm run build`
+4. Set output directory: `dist`
+5. Add a D1 binding named `DB` in Pages settings.
+6. Run `wrangler d1 execute <db> --file=./db/schema.sql` and `npm run seed` once.
+
+## Settings
+Admin → Settings:
+- **Deposit mode**: fixed or pool (future)
+- **Fixed addresses**: per network
+- **Explorer templates**: include `{txid}` placeholder
 
 ## Admin Workflow
-- **Orders**: view list, filter, open detail, update status/notes.
+- **Orders**: list, filter, open detail, update status/notes/confirmations.
 - **Rates**: CRUD rates per asset/network/fiat.
 - **Settings**: configure deposit mode, fixed addresses, explorer templates.
 - **Address Pool**: bulk upload deposit addresses for future pool mode.
 
 ## Public Flow
 1. Home page: choose asset/network, amount, fiat, payout method.
-2. Create order → redirects to `/order/[publicId]?t=[token]`.
+2. Create order → redirects to `/order/{publicId}?t={token}`.
 3. Order page: deposit address + QR, payout details, TXID submission, status timeline.
-
-## Supabase Tables
-See `db/schema.sql` for full schema. Key tables:
-- `settings`
-- `rates`
-- `addresses`
-- `orders`
-
-## Deploy (Vercel)
-1. Push repo to GitHub.
-2. Create a Vercel project.
-3. Add environment variables listed above.
-4. Deploy.
-
-## End-to-End Test Steps
-1. Set fixed deposit addresses in Admin Settings.
-2. Create rates for your desired asset/network/fiat.
-3. Create a public order from the home page.
-4. Submit payout details and TXID.
-5. Update status from the Admin Order Detail page.
 
 ## Security Notes
 - Public order access requires a token query param.
-- Payout details are masked in the public order API response.
-- Rate limiting is a basic in-memory guard per IP (upgrade for production scale).
+- Admin endpoints require session cookie + CSRF token.
+- Passwords are stored using bcrypt.
+- Payout details are masked in public order responses.
+- Basic in-memory rate limiting on create order (upgrade for production).
 
+## Repo Files
+- `db/schema.sql` – D1 schema
+- `scripts/seed.js` – seed settings, rates, and admin user
+- `functions/` – Cloudflare Pages Functions
+- `src/` – React frontend
