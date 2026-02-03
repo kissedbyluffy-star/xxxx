@@ -1,9 +1,10 @@
-name = "crypto-fiat"
-compatibility_date = "2024-06-20"
+name = "YOUR_PAGES_PROJECT_NAME"
+compatibility_date = "2026-02-03"
 
-pages_build_output_dir = "dist"
+# You might have other config above here
+# Do NOT have any placeholder in database_id
 
 [[d1_databases]]
 binding = "DB"
-database_name = "crypto-fiat"
-database_id = "YOUR_D1_DATABASE_ID"
+database_name = "xoo-db"
+database_id = "d820877d-f533-4a23-a406-8d6a07367e4b"
